@@ -1,4 +1,4 @@
-# Friends
+# Friends :: Easy Find Tool with Perl Regular Expressions.
 
 now, Testing use only.
 
