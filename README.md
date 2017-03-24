@@ -7,15 +7,19 @@ Friends v.x.x.x-2017-03-24 with Perl RE ::
 alternative find , easy to find files with perl regular expression.
 easy exclude dir/path. no prune.
 
+Friends who are good at finding out and doing something. (Provisional)
 探しだして何かするのが得意なフレンズ(仮)
 
 Friends Usage::
 
-friends "PCRE" -E(-exclude) "ディレクトリ除外指定"
+GNU find = Full match<br>
+friends  = Partial match
 
--E,-exclude exclude_arguments<br>
+friends "PCRE"<br>
+friends "PCRE" -E(-exclude) "PCRE exclude exp."
 
--I,-include include_arguments<br>
+  -E,-exclude exclude_arguments<br>
+  -I,-include include_arguments<br>
 
 
   friends "*png"        | xargs mpv       {}
@@ -41,14 +45,16 @@ friends "PCRE" -E(-exclude) "ディレクトリ除外指定"
 ./aaa/zzz/ccc/aaa.flac<br>
 ./aaa/bbb/ccc/aaa.flac
 
-tree ./aaa<br>
-./aaa<br>
-├── bbb<br>
-│   └── ccc<br>
-│       └── aaa.flac (1)<br>
-└── zzz<br>
-    └── ccc<br>
-        └── aaa.flac (2)<br>
+tree .<br>
+├── 1.sh<br>
+├── aaa<br>
+│   ├── bbb<br>
+│   │   └── ccc<br>
+│   │       └── aaa.flac<br>
+│   └── zzz<br>
+│       └── ccc<br>
+│           └── aaa.flac<br>
+├── data<br>
 
 $ friends "aaa.flac" -E "./.*?/bbb/"
 
@@ -62,5 +68,7 @@ $ friends "aaa.flac" -I "./.*?/zzz/"
 
 "./aaa/zzz/ccc/aaa.flac"  <---only (2)
 
-locale ja_JP.UTF-8
+locale ja_JP.UTF-8<br>
 mulitibytes language support (japanese and maybe chinese )
+
+フレンズ=Friends。http://www.crunchyroll.com/kemono-friends
