@@ -30,16 +30,16 @@ friends "PCRE" -E(-exclude) "ディレクトリ除外指定"
  friends '.*pcre.mkv\z|.*pcre.png\z|.*pcre.ogg\z' | xargs -i  mpv {} 
  
  friends "PCRE for Files" -E "PCRE for Path"
-
+<br>
  friends "PCRE for Files" -I "PCRE for Path"
 
--E -exclude
--I -include
+-E -exclude<br>
+-I -include<br>
 
-./aaa/zzz/ccc/aaa.flac
+./aaa/zzz/ccc/aaa.flac<br>
 ./aaa/bbb/ccc/aaa.flac
 
-tree ./aaa
+tree ./aaa<br>
 ./aaa<br>
 ├── bbb<br>
 │   └── ccc<br>
