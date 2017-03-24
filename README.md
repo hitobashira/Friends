@@ -61,7 +61,5 @@ $ friends "aaa.flac" -I "./.*?/zzz/"
 
 "./aaa/zzz/ccc/aaa.flac"  <---only (2)
 
-
 locale ja_JP.UTF-8
-
 mulitibytes language support (japanese and maybe chinese )
