@@ -144,7 +144,7 @@ if (@ARGV != 0){
     say "Friends Usage::" ;
     say "friends \"検索\" -E(-exclude) \"ディレクトリ除外指定\"
   -E,-exclude exclude_arguments
-  -I,-include include_arguments (no function)
+  -I,-include include_arguments
 
   friends \'.*pcre.mkv\\z|.*pcre.png\\z|.*pcre.ogg\\z\' | xargs -i  mpv {} 例
 
