@@ -10,20 +10,27 @@ easy exclude dir/path. no prune.
 探しだして何かするのが得意なフレンズ(仮)
 
 Friends Usage::
+
 friends "検索" -E(-exclude) "ディレクトリ除外指定"
-  -E,-exclude exclude_arguments
-  -I,-include include_arguments (no function)
+-E,-exclude exclude_arguments
+
+-I,-include include_arguments
 
   friends "*png"        | xargs mpv       {}
+  
   friends "png|jpg"     | xargs mpv       {}
+  
   friends '.*pcre.mkv\z' | xargs -i  mpv   {}
+  
   friends '.*pcre.py$'   | xargs -n1 head  {}
  
 
  friends ".*Dream.*flac" -exclude "SOUND|Sound|Comes|HITS|♡|Various|./.*?/.*?/(羽|Emerge)" 
+ 
  friends '.*pcre.mkv\z|.*pcre.png\z|.*pcre.ogg\z' | xargs -i  mpv {} 
  
 friends "PCRE for Files" -E "PCRE for Path"
+
 friends "PCRE for Files" -I "PCRE for Path"
 
 -E -exclude
