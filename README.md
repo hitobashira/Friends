@@ -11,7 +11,7 @@ easy exclude dir/path. no prune.
 
 Friends Usage::
 
-friends "検索" -E(-exclude) "ディレクトリ除外指定"
+friends "PCRE" -E(-exclude) "ディレクトリ除外指定"
 -E,-exclude exclude_arguments
 
 -I,-include include_arguments
@@ -29,15 +29,14 @@ friends "検索" -E(-exclude) "ディレクトリ除外指定"
  
  friends '.*pcre.mkv\z|.*pcre.png\z|.*pcre.ogg\z' | xargs -i  mpv {} 
  
-friends "PCRE for Files" -E "PCRE for Path"
+ friends "PCRE for Files" -E "PCRE for Path"
 
-friends "PCRE for Files" -I "PCRE for Path"
+ friends "PCRE for Files" -I "PCRE for Path"
 
 -E -exclude
 -I -include
 
 ./aaa/zzz/ccc/aaa.flac
-
 ./aaa/bbb/ccc/aaa.flac
 
 tree ./aaa
