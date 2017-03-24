@@ -23,22 +23,14 @@ my $BAROPT    = $ARGV[1]; #option
 my $EXCLUDE   = $ARGV[2]; # eq INCLUDE
 my $INCLUDE   = $ARGV[2]; # eq INCLUDE
 
-# if ( $#ARGV <= 0 ){	$BAROPT='-print2';	}#ARGV[1]が空なら代入。おためごかし規定値。
-# if ( $BAROPT eq '' )
 if ( ! defined $ARGV[1] )
 {	$BAROPT='-print2';	}#ARGV[1]が空なら代入。おためごかし規定値。
-#else{	$BAROPT=$ARGV[1];	}
-# if ( defined $EXCLUDE ) {$EXCLUDE='Art';}
-# if ( $FRIENDS =~ /\A\Q*\E/ ) { exit ;}
 
 # シェル展開風に入力している場合に、PCRE風にテキトー処理
 # アスタリスクのうっかりミスを自動訂正するだけ。だけど下記処理は部分一致なのでほんとうは前後は除去でいいはず。
 if ( defined $ARGV[0] ) {
   $FRIENDS =~ s/(\A|[^.])\Q*\E{1,}/$1.*/g ;
-  # $FRIENDS =~ s/(\A|[^.])\Q*\E{1,}/$1.*/g ;
-  #$FRIENDS =~ s/(\A|[^.])\Q*\E{1,}/$1.*/g ;
 #  say $FRIENDS ;#debug確認出力
-#  $FRIENDS =~ s|^\Q*\E|.*\| ;
 }
 
 #use vars qw[*name];	*name   = *File::Find::name;
@@ -50,21 +42,14 @@ if ( defined $ARGV[0] ) {
 if (@ARGV != 0){
 
 	sub wanted;
-		File::Find::find({wanted => \&wanted}, './');# カレントdir決め打ち
-		# File::Find::find({wanted => \&wanted}, "$cwd");# フルパス付き出力
-    # File::Find::find({wanted => \&wanted}, './', '/usr');
+		File::Find::find({wanted => \&wanted}, './');# current dir
+		# File::Find::find({wanted => \&wanted}, "$cwd");# fullpath
+    # File::Find::find({wanted => \&wanted}, './', '/usr'); w dir
 
 		exit;
 
 	sub wanted {
 
-# my $DIR ="$dir"."/";
-# say "$DIR";
-
-
-
-    # /$FRIENDS/s sは 目的に対して現実的には不要。サンプル評価メモ
-    # /a　でアスキーで限定したほうがいいかも。原稿処理目的なら。
 			if    ( $BAROPT =~ /-exclude/ || $BAROPT =~ /-E/  || $BAROPT =~ /-(without|WO|NO)/  ){
 
         if ( ! $ARGV[2] eq '') {
@@ -94,13 +79,13 @@ if (@ARGV != 0){
 		    my ($dev,$ino,$mode,$nlink,$uid,$gid);
 		    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
 				/$FRIENDS/s
-				&& say ("$name") ;		#ノーマル出力書式
+				&& say ("$name") ;		#normal print
 			}
 			elsif ( "@ARGV" =~ /-print0/  ) { #null
 		    my ($dev,$ino,$mode,$nlink,$uid,$gid);
 		    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
-				/$FRIENDS/s  #/^$FRIENDS\z/s #全部一致 find互換
-				&& print ("$name\0") ;		#-print0 終端null
+				/$FRIENDS/s
+				&& print ("$name\0") ;		#-print0 null
 			}
 			elsif ( "@ARGV" =~ /-print1/  ){ #single
 		    my ($dev,$ino,$mode,$nlink,$uid,$gid);
@@ -108,35 +93,32 @@ if (@ARGV != 0){
 				/$FRIENDS/s
 				&& print "\'", ("$name"), "\'" , "\n" ;#Single Quate
 			}
-			elsif ( "@ARGV" =~ /-print2/ || "$BAROPT" =~ /-print2/ ){ # double デフォルト値
+			elsif ( "@ARGV" =~ /-print2/ || "$BAROPT" =~ /-print2/ ){ # double Quate default
 		    my ($dev,$ino,$mode,$nlink,$uid,$gid);
 		    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
 				/$FRIENDS/s
 				&& print "\"", ("$name"), "\"" , "\n" ;#Double Quate xargsと相性?!
 			}
-      elsif ( "@ARGV" =~ /-dir/  ) { #only dir ディレクトリ限定
+      elsif ( "@ARGV" =~ /-dir/  ) { #only dir
       my ($dev,$ino,$mode,$nlink,$uid,$gid);
       (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -d _ &&
-      /$FRIENDS/s  #/^$FRIENDS\z/s #全部一致 find互換
+      /$FRIENDS/s
 
       && print "\"", ("$name"), "\"" , "\n" ;
      }
-      elsif ( "@ARGV" =~ /-wdir/  ) { #ディレクトリ +ファイル
-      /$FRIENDS/s  #/^$FRIENDS\z/s #全部一致 find互換
-      && print "\"", ("$name"), "\"" , "\n" ;#ノーマルをかっこで囲むだけ。
+      elsif ( "@ARGV" =~ /-wdir/  ) { #dir & files
+      /$FRIENDS/s
+      && print "\"", ("$name"), "\"" , "\n" ;
       }
 			else {
 		   my ($dev,$ino,$mode,$nlink,$uid,$gid);
 		   (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
 			/$FRIENDS/s
-			&& print "\"", ("$name"), "\"" , " NG!>>"," $ARGV[1] ","<<Out of Range\n" ;#Double Quate xargsと相性?!
-#		    say $BAROPT ;
+			&& print "\"", ("$name"), "\"" , " NG!>>"," $ARGV[1] ","<<Out of Range\n" ;
 			}
 	}
 }
 
-#}
-## HELP ##
 
 	else {
 		say "Friends v.$VERSION with Perl RE ::\nあいまいっぽい部分一致検索perlなfind。
@@ -144,7 +126,7 @@ if (@ARGV != 0){
     say "Friends Usage::" ;
     say "friends \"検索\" -E(-exclude) \"ディレクトリ除外指定\"
   -E,-exclude exclude_arguments
-  -I,-include include_arguments
+  -I,-include include_arguments (no function)
 
   friends \'.*pcre.mkv\\z|.*pcre.png\\z|.*pcre.ogg\\z\' | xargs -i  mpv {} 例
 
@@ -191,6 +173,3 @@ friends \".*Tunisia.*flac\" -exclude \"Powell|Sonny\"     " ;
 
 
 	}
-# say @ARGV;
-# say "@ARGV";
-#  elsif ( $BAROPT =~ /-.*?/ || $BAROPT eq $BAROPT ){ # double どんな文字列でも許容
