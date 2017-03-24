@@ -41,13 +41,13 @@ friends "PCRE for Files" -I "PCRE for Path"
 ./aaa/bbb/ccc/aaa.flac
 
 tree ./aaa
-./aaa
-├── bbb
-│   └── ccc
-│       └── aaa.flac (1)
-└── zzz
-    └── ccc
-        └── aaa.flac (2)
+./aaa<br>
+├── bbb<br>
+│   └── ccc<br>
+│       └── aaa.flac (1)<br>
+└── zzz<br>
+    └── ccc<br>
+        └── aaa.flac (2)<br>
 
 $ friends "aaa.flac" -E "./.*?/bbb/"
 
