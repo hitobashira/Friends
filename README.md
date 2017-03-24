@@ -5,7 +5,14 @@ now, Testing use only.
 Friends v.x.x.x-2017-03-24 with Perl RE ::
 
 alternative find , easy to find files with perl regular expression.
-easy exlude dir/path. no prune.
+easy exclude dir/path. no prune.
+
+探しだして何かするのが得意なフレンズ(仮)
+
+Friends Usage::
+friends "検索" -E(-exclude) "ディレクトリ除外指定"
+  -E,-exclude exclude_arguments
+  -I,-include include_arguments (no function)
 
   friends "*png"        | xargs mpv       {}
   friends "png|jpg"     | xargs mpv       {}
@@ -16,4 +23,33 @@ easy exlude dir/path. no prune.
  friends ".*Dream.*flac" -exclude "SOUND|Sound|Comes|HITS|♡|Various|./.*?/.*?/(羽|Emerge)" 
  friends '.*pcre.mkv\z|.*pcre.png\z|.*pcre.ogg\z' | xargs -i  mpv {} 
  
- 
+friends "PCRE for Files" -E "PCRE for Path"
+friends "PCRE for Files" -I "PCRE for Path"
+
+-E -exclude
+-I -include
+
+./aaa/zzz/ccc/aaa.flac
+./aaa/bbb/ccc/aaa.flac
+
+tree ./aaa
+./aaa
+├── bbb
+│   └── ccc
+│       └── aaa.flac (1)
+└── zzz
+    └── ccc
+        └── aaa.flac (2)
+
+$ friends "aaa.flac" -E "./.*?/bbb/"
+"./aaa/zzz/ccc/aaa.flac" <---only (2)
+
+$ friends "aaa.flac" -E "./.*?/zzz/"
+"./aaa/bbb/ccc/aaa.flac" <---only (1)
+
+$ friends "aaa.flac" -I "./.*?/zzz/"
+"./aaa/zzz/ccc/aaa.flac"  <---only (2)
+
+
+locale ja_JP.UTF-8
+mulitibytes language support (japanese and maybe chinese )
