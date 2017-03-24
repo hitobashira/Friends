@@ -30,6 +30,7 @@ friends "PCRE for Files" -I "PCRE for Path"
 -I -include
 
 ./aaa/zzz/ccc/aaa.flac
+
 ./aaa/bbb/ccc/aaa.flac
 
 tree ./aaa
@@ -42,14 +43,18 @@ tree ./aaa
         └── aaa.flac (2)
 
 $ friends "aaa.flac" -E "./.*?/bbb/"
+
 "./aaa/zzz/ccc/aaa.flac" <---only (2)
 
 $ friends "aaa.flac" -E "./.*?/zzz/"
+
 "./aaa/bbb/ccc/aaa.flac" <---only (1)
 
 $ friends "aaa.flac" -I "./.*?/zzz/"
+
 "./aaa/zzz/ccc/aaa.flac"  <---only (2)
 
 
 locale ja_JP.UTF-8
+
 mulitibytes language support (japanese and maybe chinese )
