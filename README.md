@@ -12,8 +12,11 @@ easy exclude dir/path. no prune.
 Friends Usage::
 
 friends "PCRE" -E(-exclude) "ディレクトリ除外指定"
+
 -E,-exclude exclude_arguments<br>
+
 -I,-include include_arguments<br>
+
 
   friends "*png"        | xargs mpv       {}
   
