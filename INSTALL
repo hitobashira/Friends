@@ -1,0 +1,23 @@
+Installation Instructions
+
+Friends:: 
+Simple file finder 
+with Perl Regular Expresions 
+on the terminal
+
+If you do not have any Friends(command) yet,
+
+(example)
+
+$ cd (unpacked dir)
+
+$ cp friends ~/bin
+$ cd ~/bin
+$ chmod u+x friends
+
+$ friends
+
+show help
+
+in ubuntu 16.04
+
