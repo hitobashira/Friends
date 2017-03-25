@@ -3,35 +3,34 @@
             if 0; #$running_under_some_shell
 
 #探しだして何かするのが得意なフレンズ(仮)::FrIeNDs" ;
-#マルチバイト、日本語問題なし。
-# /$FRIENDS/s  を /^$FRIENDS\z/s に着替えるとfind互換の指定方法に。それが便利かどうかは本人次第。
+# /$FRIENDS/s  を /^$FRIENDS\z/s に着替えるとfind互換の指定方法に。それが便利かどうか。
 
 use strict;
 use warnings;
-use feature qw(switch say state); #use feature ":5.10" 等価
+use feature qw(switch say state); #eq use feature ":5.10"
 use File::Find ();
 #use File::Find 'find';
-#use Getopt::Long;
 #use Pod::Usage;
 use Cwd;
 my $cwd = getcwd();#say "$cwd";
 
-my $VERSION='0.8.8-2017-03-24';#バージョン
+#use Getopt::Long ();
+
+my $VERSION='0.8.10-2017-03-25';
 
 my $FRIENDS   = $ARGV[0]; #Search
 my $BAROPT    = $ARGV[1]; #option
 my $EXCLUDE   = $ARGV[2]; # eq INCLUDE
 my $INCLUDE   = $ARGV[2]; # eq INCLUDE
 
-if ( ! defined $ARGV[1] )
-{	$BAROPT='-print2';	}#ARGV[1]が空なら代入。おためごかし規定値。
+# シェル展開風に入力ミスした場合に、PCRE風にテキトー補正。
+# アスタリスクのうっかりミスを自動訂正するだけ。部分一致なのでほんとうは前後は除去のみでいいはず。
 
-# シェル展開風に入力している場合に、PCRE風にテキトー処理
-# アスタリスクのうっかりミスを自動訂正するだけ。だけど下記処理は部分一致なのでほんとうは前後は除去でいいはず。
 if ( defined $ARGV[0] ) {
-  $FRIENDS =~ s/(\A|[^.])\Q*\E{1,}/$1.*/g ;
-#  say $FRIENDS ;#debug確認出力
-}
+  $FRIENDS =~ s/(\A|[^.])\Q*\E{1,}/$1.*/g ;}
+
+if ( ! defined $ARGV[1] ){
+  $BAROPT='-print2';	}#ARGV[1]が空なら代入。おためごかし規定値。
 
 #use vars qw[*name];	*name   = *File::Find::name;
  use vars qw/*name *dir/;
@@ -39,104 +38,116 @@ if ( defined $ARGV[0] ) {
  *dir    = *File::Find::dir;
 # *prune  = *File::Find::prune;
 
-if (@ARGV != 0){
+
+say "include and exclude , incompatible with, One Only."  and exit
+if ( "@ARGV" =~ /-E|-exclude/ and "@ARGV" =~ /-I|-include/ ) ;
+
+say "TYPO : Option error '-(E|exclude|I|include|print|dir|wdir)'" and exit
+if ( "$BAROPT" !~ /\A-(E|exclude|I|include|print|dir|wdir)/ ) ;
+
+say "NO arg. : (ex|in)clude arguments, error " and exit
+if ( $BAROPT =~ /-(I|E|include|exclude)/ and $#ARGV < 2 );
+
+if (@ARGV != 0 ){
 
 	sub wanted;
 		File::Find::find({wanted => \&wanted}, './');# current dir
 		# File::Find::find({wanted => \&wanted}, "$cwd");# fullpath
-    # File::Find::find({wanted => \&wanted}, './', '/usr'); w dir
+    # File::Find::find({wanted => \&wanted}, './', '/usr'); multi
 
 		exit;
 
 	sub wanted {
 
-			if    ( $BAROPT =~ /-exclude/ || $BAROPT =~ /-E/  || $BAROPT =~ /-(without|WO|NO)/  ){
+		  my ($dev,$ino,$mode,$nlink,$uid,$gid);
 
-        if ( ! $ARGV[2] eq '') {
-        # unless ( $name =~ /$EXCLUDE/ ){
-        unless ( $dir =~ m/$EXCLUDE/ ){
-		    my ($dev,$ino,$mode,$nlink,$uid,$gid);
-		    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
-				      /$FRIENDS/s
-              && print "\"", ("$name"), "\"" , "\n" ;
-                                      }
-			  }
-      }
-			elsif    ( $BAROPT =~ /-include/ || $BAROPT =~ /-I/  ){
+			if    ( $BAROPT =~ /-exclude/ || $BAROPT =~ /-E/ ){
 
-        if ( ! $ARGV[2] eq '') {
-        # unless ( $name !~ /$INCLUDE/ ){
-        unless ( $dir !~ m/$INCLUDE/ ){
-		    my ($dev,$ino,$mode,$nlink,$uid,$gid);
-		    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
-				      /$FRIENDS/s
-              && print "\"", ("$name"), "\"" , "\n" ;
-                                      }
-			  }
+        unless ( $dir =~ m/$EXCLUDE/ ){ # unless ( $name =~ /$EXCLUDE/ ){
+		        (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -f _ &&
+			      /$FRIENDS/s
+            && print "\"", ("$name"), "\"" , "\n" ;
+        }
       }
 
+			elsif  ( $BAROPT =~ /-include/ || $BAROPT =~ /-I/  ){
+
+        unless ( $dir !~ m/$INCLUDE/ ){ # unless ( $name !~ /$INCLUDE/ ){
+		        (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
+			      /$FRIENDS/s
+            && print "\"", ("$name"), "\"" , "\n" ;
+        }
+      }
+
+
+      elsif ( "@ARGV" =~ /-print2/ || "$BAROPT" =~ /-print2/ ){ # double Quate default
+      (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
+      /$FRIENDS/s
+      && print "\"", ("$name"), "\"" , "\n" ;#Double Quate xargsと相性?!
+      }
 			elsif ( "@ARGV" =~ /-print\z/  ){
-		    my ($dev,$ino,$mode,$nlink,$uid,$gid);
 		    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
 				/$FRIENDS/s
-				&& say ("$name") ;		#normal print
+				&& say ("$name") ;		#normal print like find
 			}
 			elsif ( "@ARGV" =~ /-print0/  ) { #null
-		    my ($dev,$ino,$mode,$nlink,$uid,$gid);
 		    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
 				/$FRIENDS/s
 				&& print ("$name\0") ;		#-print0 null
 			}
 			elsif ( "@ARGV" =~ /-print1/  ){ #single
-		    my ($dev,$ino,$mode,$nlink,$uid,$gid);
 		    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
 				/$FRIENDS/s
 				&& print "\'", ("$name"), "\'" , "\n" ;#Single Quate
 			}
-			elsif ( "@ARGV" =~ /-print2/ || "$BAROPT" =~ /-print2/ ){ # double Quate default
-		    my ($dev,$ino,$mode,$nlink,$uid,$gid);
-		    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
-				/$FRIENDS/s
-				&& print "\"", ("$name"), "\"" , "\n" ;#Double Quate xargsと相性?!
-			}
       elsif ( "@ARGV" =~ /-dir/  ) { #only dir
-      my ($dev,$ino,$mode,$nlink,$uid,$gid);
-      (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -d _ &&
-      /$FRIENDS/s
-
-      && print "\"", ("$name"), "\"" , "\n" ;
-     }
+        (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -d _ &&
+        /$FRIENDS/s
+        && print "\"", ("$name"), "\"" , "\n" ;
+      }
       elsif ( "@ARGV" =~ /-wdir/  ) { #dir & files
-      /$FRIENDS/s
-      && print "\"", ("$name"), "\"" , "\n" ;
+        /$FRIENDS/s
+        && print "\"", ("$name"), "\"" , "\n" ;
       }
 			else {
-		   my ($dev,$ino,$mode,$nlink,$uid,$gid);
-		   (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&  -f _ &&
-			/$FRIENDS/s
-			&& print "\"", ("$name"), "\"" , " NG!>>"," $ARGV[1] ","<<Out of Range\n" ;
+  			/$FRIENDS/s
+  			&& print "\"", ("$name"), "\"" , "\n","NG!>>"," $ARGV[1] ","<<Out of Range\n" ;
 			}
 	}
-}
+}else {
 
 
-	else {
-		say "Friends v.$VERSION with Perl RE ::\nあいまいっぽい部分一致検索perlなfind。
-探しだして何かするのが得意なフレンズ(仮)" ;
-    say "Friends Usage::" ;
-    say "friends \"検索\" -E(-exclude) \"ディレクトリ除外指定\"
-  -E,-exclude exclude_arguments
-  -I,-include include_arguments (no function)
+say "
+Friends v.$VERSION with Perl RE ::
 
-  friends \'.*pcre.mkv\\z|.*pcre.png\\z|.*pcre.ogg\\z\' | xargs -i  mpv {} 例
+SYNOPSIS
+
+Friends Usage::
+
+  friends (show help)
+  friends \"pcre for filename\" (Using Simple)
+      Simple is almost compatible find.
+      find . -name \"words\" -type f
+
+  friends \"pcre for filename\" -E(-exclude) \"pcre for path\"
+
+            -E,-exclude exclude_arguments
+            -I,-include include_arguments
+
+  friends \'.*pcre.mkv\\z|.*pcre.png\\z|.*pcre.ogg\\z\' | xargs -i  mpv {}
+
+DESCRIPTION
+
+あいまいっぽい部分一致検索perlなfind。
+探しだして何かするのが得意なフレンズ(仮) finds/finz
 
 ・検索語は、ファイル名対象。部分一致。もちろんパイプ使える。
             完全一致させる場合。\\APCRE\\z などと入力。
             完全一致させる場合。^PCRE\$ などと入力。
 
-・除外語は、パス名のみ対象。パイプで複数簡単除外。    " ;
-    say "    " ;
-		say "▲最大のメリットは、Perl5正規表現でファイル検索できること。" ;
+・除外語は、パス名のみ対象。パイプで複数簡単除外。
+";
+		say "▲最大のメリット、Perl5正規表現でファイル検索できる。" ;
 		say "▲カレント決め打ち、ややこしいオプションなし。後継パイプで。" ;
 		say "▲原則\"クォート\"で囲もう。" ;
     say "  friends \"*png\"        | xargs mpv       {} 例";
@@ -145,11 +156,11 @@ if (@ARGV != 0){
 		say "  friends '.*pcre.py\$'   | xargs -n1 head  {} 例";
 		say "
     3番めの深さのディレクトリのみ除外とか、
-    全てに共通して除外するとか、
+    全てに共通して除外するとか、けっこう簡単に高度なことができる。
     ";
 		say "friends \".*Dream.*flac\" -exclude \"SOUND|Sound|Comes|HITS|♡|Various|./.*?/.*?/(羽|Emerge)\"     " ;
-		say "    " ;
-		say "Scean::A Night In Tunisia をきいてみたいが、Tunisiaという文字しか記憶にない。
+		say "
+Scean::A Night In Tunisia をきいてみたいが、Tunisiaという文字しか記憶にない。
 Bud Powellでもなく、Sonny Rollinsでもない。「Art Blakey」が思い出せない状態。
 
 friends \".*Tunisia.*flac\" -exclude \"Powell|Sonny\"     " ;
@@ -158,18 +169,53 @@ friends \".*Tunisia.*flac\" -exclude \"Powell|Sonny\"     " ;
 		say "    " ;
 		say " -print?オプションは特に不要なのでそのうち消えます。" ;
     say "    " ;
-    say "  friends \"PCRE\" オプションなし -print2と等価。★デフォルト";
-		say "  friends \"PCRE\" -print   find互換出力※ディレクトリ含まず";
-		say "  friends \"PCRE\" -print0  ファイル名終端null区切り";
-		say "  friends \"PCRE\" -print1  Sコーテションで囲った出力";
-		say "  friends \"PCRE\" -print2  Wコーテションで囲った出力";
-		say "  friends \"PCRE\" ゴミ文字 上に同じ。警告あり";
+    say "  friends \"PCRE\" no option eq -print2 ★default";
+		say "  friends \"PCRE\" -print    like find ";
+		say "  friends \"PCRE\" -print0   like find with null";
+		say "  friends \"PCRE\" -print1   S quotation";
+		say "  friends \"PCRE\" -print2   W quotation";
+		say "  friends \"PCRE\"  other    Out of range ";
 		say "    " ;
-    say "  friends \"PCRE\" -dir  ディレクトリのみ Wコーテション";
-    say "  friends \"PCRE\" -wdir ディレクトリとファイル Wコーテション";
+    say "  friends \"PCRE\" -dir      dir only W quotation";
+    say "  friends \"PCRE\" -wdir     dir and file W quotation";
     say "    " ;
-    say "  friends '^Review.*構造.*プロット.*.txt\$' 頭と終わりを抑える例=つまり、ファイル頭からファイル末まで完全一致させる場合は正規表現で補うと吉。拡張子末尾完全一致など" ;
-		say "  friends \"PCRE\" | xargs echo で\"\"なしリスト(find標準=-print)。";
+    say "  friends '^Review.*構造.*プロット.*.txt\$'
+    頭と終わりを抑える例=つまり、ファイル頭からファイル末まで完全一致させる場合は正規表現で補うと吉。拡張子末尾完全一致など" ;
+		say "  friends \"PCRE\" | xargs echo で\"\"なしリスト(find標準=-print)。
 
+SEE ALSO
 
-	}
+find(1), perl(1), xargs(1)
+
+AUTHOR
+
+Keny Zish <hitobashira\@gmail.com>
+
+Acknowledgements
+
+Based on code from Find.pm and find2perl.
+
+etc1) in .bashrc/.zshrc
+
+  if you like it;
+
+    alias     finz='friends'
+    alias    finds='friends'
+    alias     pind='friends'
+    alias perlfind='friends'
+
+etc2) Web
+
+    https://github.com/hitobashira/Friends
+
+ENVIRONMENT
+
+Maybe, No environment variables are used.
+
+Copyright (C) 2017 by Keny Zish
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.10 or,
+at your option, any later version of Perl 5 you may have available.
+";
+}
