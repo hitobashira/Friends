@@ -1,7 +1,5 @@
 # Friends :: Easy Find Tool with Perl Regular Expressions.
 
-now, Testing use only.
-
 Friends v.x.x.x-2017-03-24 with Perl RE ::
 
 alternative find , easy to find files with perl regular expression.
