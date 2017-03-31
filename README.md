@@ -2,7 +2,7 @@
 
 Friends v.x.x.x-2017-03-24 with Perl RE ::
 
-alternative find , easy to find files with perl regular expression.
+not alternative find , easy to find files with perl regular expression.
 easy exclude dir/path. no prune.
 
 Friends who are good at finding out and doing something. (Provisional)
