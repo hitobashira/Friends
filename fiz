@@ -1,0 +1,707 @@
+#! /usr/bin/perl -C64
+      eval 'exec /usr/bin/perl -S $0 ${1+"$@"}'
+            if 0; #$running_under_some_shell
+use strict;
+use warnings;
+use v5.26;
+use utf8;
+# use utf8::all; # No good. not use.
+use File::Find (); #use File::Find 'find';
+    no warnings 'File::Find'; #Good! Can't cd to (./) .gvfs: Permission denied
+    my ($dev,$ino,$mode,$nlink,$uid,$gid);
+use Pod::Usage;
+use Cwd;
+    my $findroot = '.'       ; # ./relative/
+    # my $findroot = getcwd()  ; # /absolute/
+
+    # my $VERSION='0.7.11-2017-08-21';
+    my $VERSION='0.8.00-2018-09-17';
+    say "finz as Friends beta $VERSION" and goto HELP if ( $#ARGV < 0 );
+
+use vars qw[*name *dir] ;     # *prune];
+*name   = *File::Find::name ; #/some/path/zoo.ext
+*dir    = *File::Find::dir  ; #/some/path/
+## $_     = basename zoo.txt
+
+use vars qw[$SEARCH $EXCLUDE $DIR $INCLUDE $PRINTER $CASE $NULL];
+
+use Getopt::Std;
+my %opts;
+# 0 \d はだめ。記号の後に「:」をつける>オプション引数。「:」をつけない>「1」。
+getopts('cdi:e:n:p:' => \%opts);
+
+
+$EXCLUDE = $opts{'e'};#exclude dirs.
+$INCLUDE = $opts{'i'};#include dirs.
+$NULL    = $opts{'n'};#same print null separators.
+$PRINTER = $opts{'p'};#say $PRINTER. all types.
+$DIR     = $opts{'d'};#to find directory    1
+$CASE    = $opts{'c'};#CaseSensitive        1
+
+$PRINTER //= 'default'; #未定義だった場合だけ
+$NULL    //= 'default'; #未定義だった場合だけ
+# if( exists $opts{e} ){ map { $EXCLUDE="$opts{e}" } keys %opts;# }
+$SEARCH    = $ARGV[0];
+$SEARCH  //= '.*+' ;#未定義検索ワードはこれ
+$CASE    //= '2'; #未定義は2
+&globToPCRE;
+
+
+
+#51 Main Dish ## Main Dish ## Main Dish ## Main Dish
+sub wanted;
+    File::Find::find({wanted => \&wanted}, $findroot );
+    # File::Find::find( { wanted => \&wanted, follow => 0 }, $findroot );
+    exit;
+  sub wanted {
+    # my ($dev,$ino,$mode,$nlink,$uid,$gid); #remove this
+  if    ( !( exists $opts{c} ) and  !( exists $opts{i} ) and  !( exists $opts{e} )){
+        &Type_F_IG  ; ### default
+  }
+  elsif (  ( exists $opts{c} ) and  !( exists $opts{i} ) and  !( exists $opts{e} )){
+        &Type_F_CS  ; ### default
+  }
+  #ディレクトリ
+  elsif   ( exists $opts{d}  and    exists $opts{c} ){
+        (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -d _ &&
+        m{$SEARCH}i &&
+        &SelectPrinter ;
+      }
+  elsif   ( exists $opts{d}  and !( exists $opts{c} )){
+        (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -d _ &&
+        m{$SEARCH} &&
+        &SelectPrinter ;
+      }
+  #大文字小文字に繊細。Case Sensitive
+  elsif (  exists $opts{c}  and exists $opts{e}  ){ &Exclude_CS  ;}
+  elsif (  exists $opts{c}  and exists $opts{i}  ){ &Include_CS  ;}
+  #大文字小文字を無視。Case Ignore デフォルト
+  elsif (!(exists $opts{c}) and exists $opts{e}  ){ &Exclude_IG  ;}
+  elsif (!(exists $opts{c}) and exists $opts{i}  ){ &Include_IG  ;}
+  else  { print("圏外 ::: Out of Range.\n");  }
+  }
+
+sub Type_F_IG {
+    -f &&             #抜くとディレクトリも一致。ファイル限定
+    m{$SEARCH}i &&
+    &SelectPrinter ;
+}
+sub Type_F_CS {
+    -f &&
+    m{$SEARCH} &&
+    &SelectPrinter ;
+}
+sub Include_CS {
+    $dir =~ m{$INCLUDE} && m{$SEARCH} &&
+    &SelectPrinter ;
+}
+sub Exclude_CS {
+    $dir !~ m{$EXCLUDE} && m{$SEARCH} &&
+    &SelectPrinter ;
+}
+sub Include_IG {
+    $dir =~ m{$INCLUDE}i && m{$SEARCH}i &&
+    &SelectPrinter ;
+}
+sub Exclude_IG {
+    $dir !~ m{$EXCLUDE}i && m{$SEARCH}i &&
+    &SelectPrinter ;
+}
+
+#プリンターセレクション
+sub SelectPrinter {
+  #no utf8::all; #
+
+    if ( exists $opts{p} || exists $opts{n} ) {
+        if ($NULL    =~ /ull/    ) { &Print0 }
+        if ($PRINTER =~ /rint0/  ) { &Print0 }
+        if ($PRINTER =~ /rint1/  ) { &Print1 }
+        if ($PRINTER =~ /rint2/  ) { &Print2 }
+        if ($PRINTER =~ /rintD/  ) { &PrintD }
+        if ($PRINTER =~ /default/) { &Print }
+    }
+    else{
+        &Print ;
+    }
+}
+  sub Print0  {  print     ("$name\0")       ;} # null
+  sub Print1  {  say "\'", ("$name"  ), "\'" ;} # Single Quote
+  sub Print2  {  say "\"", ("$name"  ), "\"" ;} # W Quote
+  sub PrintD  {  say "\"", ("$name/" ), "\"" ;} # +/ W Quote. for directory
+  sub Print   {  say       ("$name"  )       ;} #
+
+#なんちゃってPCRE
+sub globToPCRE { #roughly for partMatch.  #だがしかし、これはうつけ者対策
+    $SEARCH =~ s/(?<!\\)\.(?!\*)/(\\.)/   ; #否定的後読み、単独. 否定的先読み . の後ろに*がない場合は \.
+    $SEARCH =~ s/^\Q*\E/(.*?)/        ; #^*は 削除 または、.*?に変換
+    #     $SEARCH =~ s/\Q*\E$/(.*?)/        ; #*$は (1)
+    $SEARCH =~ s/(?<!\.)\Q*\E/(.*?)/g  ; #否定的後読み .に続かない* は.*?変換
+}
+
+=pod
+sub globToCHK { #roughly for partMatch.
+  if ( $SEARCH =~ /^\Q*\E/ ) { #
+  say "先頭に*は使えない。-glob とするか、正確なPCRE"  and exit;
+  }
+}
+=cut
+# sub globCheck {
+# if (
+#     $SEARCH =~ m/^\Q*\E/     or
+#     $SEARCH =~ m/[^.]\Q*\E$/ or
+#     $SEARCH =~ m/[^\\]\Q.\E/
+#     ){
+#         say 'not glob!! use Perl Regular Expression.
+# Type practical Perl Regular Expression without dream.
+#     eg.     .   ->  \.
+#             *   ->  .*? .*+ .*
+# 不要。^.* / *$
+# ex.
+#          finz "folder\.svg"
+#          finz ".*folder\.svg.*"
+#          finz "folder\.svg"
+#         ' and exit; }
+# }
+#
+# sub globToPCRE1 { #roughly for partMatch.
+#       if ( defined $SEARCH ) {
+#          #  $SEARCH =~ s/(\A|[^\.])\Q*\E{1,}/$1.*/g ;
+#     #      $SEARCH =~ s/\A(\Q*\E{1,})/^.*/g ;
+#     #      $SEARCH =~ s/\Q*\E{1,}$/.*\$/g ;
+#     #      $SEARCH =~ s/^\Q*\E/.*/       ; #行頭の*は .* に置換
+#             $SEARCH =~ s/\.([^\*](\?|\+)?)/\\.$1/g   ; # . to \.
+#             $SEARCH =~ s/^\Q*\E//       ; #行頭の*は 削除 部分マッチだから不要 .*は実害なし。
+#             $SEARCH =~ s/[^\.]\Q*\E/.*?/       ; # *
+#             $SEARCH =~ s/([^\.])\Q*\E$/$1.*?/       ; # *
+#             #$SEARCH =~ s/(.*+)\Q*\E(.*+)/$1\.\*$2/       ; #行頭以外の*
+#             $SEARCH =~ s/(\*)\.(\*)$/.$1?\\..$2?/ ; #echo "*.*" | perl -pe 's/(\*).(\*)$/.$1\\..$2/'
+#         }
+# }
+#
+
+
+
+
+
+=pod
+
+sub Type_F_IG_woSYM {
+      (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -f _ &&
+      m{$SEARCH}i &&
+      &SelectPrinter ;
+}
+sub Type_F_woSYM {
+      (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -f _ &&
+      m{$SEARCH} &&
+      &SelectPrinter ;
+}
+sub Type_D_woSYM {
+      (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -d _ &&
+        m{$SEARCH} &&                    # m/^$SEARCH$/s &&
+        &PrintD ;                         # print("$name\n");
+}
+
+
+sub exclude___ {
+# 特定ディレクトリを除外して、ファイル名が"*.abc"の一覧を取得
+    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -d _ &&
+    m{$EXCLUDE}   &&    ($File::Find::prune = 1)
+    # /^lib\z/s   &&   ($File::Find::prune = 1)
+    ||
+    -f _ &&
+    m{$SEARCH}
+    # /^.*\.php\z/s &&
+    && print("$name\n");
+}
+
+        sub excxxxlude {
+      # 特定ディレクトリを除外したファイルの一覧を取得
+    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -d _ &&
+    m{$EXCLUDE}   &&    ($File::Find::prune = 1)
+    ||
+    -f _ &&
+    m{$SEARCH}
+    && print("$name\n");
+      }
+
+# 以下ふたつに速度差「は」ない。
+sub wanted_ {
+#find2perl . -name "*pm" -type f
+    /^.*pm\z/s &&
+    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -f _
+    && print("$name\n");
+}
+sub wanted_x {
+# find2perl . -type f -name "*pm"
+    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -f _
+    &&
+    /^.*pm\z/s
+    && print("$name\n");
+}
+sub wanted_xxxxxx {
+    #find2perl . -name "*pm" -type d
+    /^.*pm\z/s &&
+    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&
+    -d _
+    && print("$name\n");
+}
+
+=cut
+
+
+
+
+
+
+
+
+HELP:
+#__END__
+
+say "
+##SYNOPSIS
+
+DO NOT USE GLOB, as *.txt . Glob not RE.
+You must use PerlRE.
+
+*.txt => .*\\.txt
+
+Princple add \"Quoted RE\" to your RE-Words.
+
+finz Usage::Easily used. finz have another names, eg Friends.
+Friends loves RE. Friends is another find with PCRE.
+indispensable Quoted RE(regular expression).
+
+###fiz \"RE for part of basename\"
+
+  fiz \"RE\"          => default, typeF, noCasesensitive.
+  fiz -null   \"RE\"  => null separators
+  fiz -print0 \"RE\"  => null separators. eq -null
+  fiz -print1 \"RE\"  => single Quoted
+  fiz -print2 \"RE\"  => Double Quoted
+
+  fiz -e \"RE|RE|RE\" \"RE|RE|RE\"
+
+####example::
+
+  cd ~/Music
+  fiz \".*?.flac\\z|.*?.mp3|.ogg\\z|\\d\\d .*?Take Five.*?.flac\"
+
+  1)Friends can search just files without dirs. (default)
+  2)Friends can match  part of filename.
+  3)Friends can exclude dirs. easily.  -e'./sub|bb|BD'  except dir
+  4)Friends can include dirs, easily.  -i'./sub|bb|BD'  Refine search
+  5)Friends can insensitive match. with -c (ignore CASE)
+  6)Friends works recursively.
+  7)Friends print DoubleQuoted \"filename\". \"./path/path/filename.txt\"
+  8)Friends also like xargs , perl and another command .
+
+pipe(|) and perl,xargs.
+
+  fiz \"AAA.*?.mp4\" | perl -lne 'system (\"mpv \$_ \")'
+  fiz \"AAA.*?.mp4\" | xargs -i mpv {}
+  fiz -print0 \"AAA.*?.mp4\" | xargs -0 -i mpv {}
+
+finz is not find alternative. finz has another functions under another concept.
+This program was written with Perl's regular expression to simplify file searching.
+Because GNU find DO have RE(emacs|awk|posix|egrep|etc...). However there are no PCRE." ;
+
+#Cheat:
+#say"
+
+__END__
+=head1 NAME
+
+B<finz> is alternative easy find with B<Powerfull>I<Perl Regular expr>]
+finz/Friends v.$VERSION with Perl RE ::
+
+SYNOPSIS
+
+Friends Usage::Easily used. Friends love Quoted RE(regular expression).
+Princple 0 add \"Quote\" to your RE-Words.
+
+  finz \"RE for part of basename\"
+  finz \"RE for basename\" -E(-exclude) \"RE for fullpath(without basename)\"
+
+            -e'path exclude_arguments'
+            -i'path include_arguments'
+
+  finz \'.*RE.mkv\\z|.*RE.png\\z|.*RE.ogg\\z\' | xargs -i  mpv {}
+  finz \'^\\d\\d Take Five.flac\\z|.*RE.png\\z|.*RE.ogg\\z\' | xargs -i  mpv {}
+
+  finz (show help)
+
+DESCRIPTION
+
+あいまいっぽい部分一致検索perlなfind。
+探しだして何かするのが得意なフレンズ(仮) Friends as finds/finz.
+
+・検索語は、ファイル名対象。部分一致。パイプ記号も使える。
+            完全一致させる場合。\\ARE\\z や^RE\$ などと入力。
+
+・ディレクトリ除外、包含:、パス名のみ対象。with pipe 複数簡単除外。
+
+        ▲merit1 Perl RE
+        ▲merit2 Simple method , no
+
+    3番めの深さのディレクトリのみ除外とか、
+    全てに共通して除外するとか、けっこう簡単に高度なことができる。
+    finz \".*Dream.*flac\" -exclude \"SOUND|Sound|Comes|HITS|♡|Various|./.*?/.*?/(羽|Emerge)\"
+
+Scean::part match
+
+You want to listen A Night In Tunisia. but you can not remember the name of the what name music, Not in the store only character that Tunisia.
+
+The artist is not Bud Powell. It is not a Bud Powell either. you can not remember Art Blakey.
+
+    cd ~/MusicLibrary
+    finz \"Tunisia.*flac\" -exclude \"Powell|Sonny\"
+    finz \"Tunisia.*flac\" -exclude \"Powell|Sonny\" | xargs mpv {}
+
+    ./Fusion/Art Blakey/A Night In Tunisia/01 A Night In Tunisia.flac
+
+Scean::perfect match
+
+    finz '^\\d\\d Take Five.*?.flac\$'
+    finz '^Review.*Structure.*prot.*.txt\$'
+             ^                             \$
+Scean::remove Quote
+
+    finz \"RE\" | xargs echo {}
+    remove quote \"\" , same find -print
+
+    -print? オプションは特に不要なのでそのうち消えます。
+
+GNU find (basic examples, a little)::
+
+  find . -type f -name \"*WORDS*\"
+  find . -type f -regextype posix-extended -regex \"POSIX RE\"
+  find . -type f -regextype posix-egrep -regex \"POSIX RE\"
+
+  -name  for basename
+  -regex for fullpathname
+
+";
+#}
+__END__
+
+=head1 NAME
+
+B<finz> is alternative easy find with B<Powerfull>I<Perl Regular expr>]
+
+=head1 SYNOPSIS
+
+Basic
+
+
+B<finz> "B<perlexpr[0]>"
+
+"B<perlexpr[0]>" is $ARGV[0], and search words.Unlike find, you can also search by partial matches.
+
+(experimental)
+finz "B<perlexpr[0]>" S<[ B<-dir> ]> only pathname :test
+finz "B<perlexpr[0]>" S<[ B<-ignore> ]> Case Insensitive:test
+
+C<easy prune?!>
+
+B<finz> "B<perlexpr[0]>" S<[ B<-I> ]> "I<perlexpr>]"
+B<finz> "B<perlexpr[0]>" S<[ B<-E> ]> "I<perlexpr>]"
+
+easy way to exclude dir(not file).
+-E or -exclude
+-I or -include
+
+cd /usr/share
+B<$ finz "Find.*.pm" -I "perl">
+"./perl/5.22.1/FindBin.pm"
+"./perl/5.22.1/Pod/Find.pm"
+"./perl/5.22.1/File/Find.pm"
+B<$ finz "Find.*.pm" -I "Pod">
+"./perl/5.22.1/Pod/Find.pm"
+B<$ finz "Find.*.pm" -E "Pod">
+"./perl/5.22.1/FindBin.pm"
+"./perl/5.22.1/File/Find.pm"
+
+
+
+=head1 DESCRIPTION
+
+finz as Friends - with I<perlexpr>] Perl RE
+
+C<finz>
+
+#  <hr> <img src="thang.png">
+#  <p> This is a raw HTML paragraph </p>
+#
+探しだして何かするのが得意なフレンズ(仮)::FrIeNDs" ;
+
+easy include :: function -exclude dir
+easy exclude :: function -include dir
+
+finz "any\.txt" | xargs -t sh -c 'cd `dirname {}` ; pwd ; ls `basename {}`'
+finz "^any\.txt" | xargs -t -I{} sh -c 'cd `dirname {}` ; pwd ; ls `basename {}`'
+
+finz "any\.txt" -I "./sub" | xargs -t -I{} sh -c 'cd `dirname {}` ; pwd ; rename -n '\''s|^(.*?)\.(txt)|$2( revers )$1|'\'' `basename {}`'
+
+
+=over 3
+
+=item B<-E>, B<-exclude>
+
+Ver
+
+=item B<-n>, B<-nono>
+
+No
+
+=item B<-f>, B<-force>
+
+Over
+
+=back
+
+=head1 ENVIRONMENT
+
+No environment variables are used.
+
+Maybe, No environment variables are used.
+tested at ubuntu16.04/Linux Mint18.1
+perl v5.22.1
+
+\$ which perl
+/usr/bin/perl
+
+/usr/bin/perl is the standard location on OSX.
+/usr/local/bin/perl is FreeBSD by pkg.
+
+=head1 AUTHOR
+
+Keny Zish <hitobashira\@gmail.com>
+
+=head1 SEE ALSO
+
+find(1), perl(1), xargs(1)
+
+=head1 etc. DIAGNOSTICS
+
+Copyright (C) 2017 by Keny Zish
+
+This Software is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.10 or,
+at your option, any later version of Perl 5 you may have available.
+
+
+#find . -type f -name "*.ISO" -exec renamej -n 's|ISO|iso|' {} \;
+#finz "*.ISO\z" | xargs renamej -v 's|ISO|iso|' {} \;
+#finz "*\.ISO" | xargs renamej -v 's|\.ISO$|.iso|' {} \;
+#finz "*\.ISO$" | xargs renamej -v 's|\.ISO$|.iso|' {} \;
+
+#echo "123's.doc" | basename `perl -pe "s|'|\'|"`
+ # ; IFS=$'\n' ; renamej -v
+
+# finz "part.*0813.*\.txt" | xargs -t -I{} bash -c 'cd `dirname {}` ; pwd ; IFS=$'\n' ; renamej -v '\''s|^(.*)\.(txt)|$2(revers)$1|g'\'' `basename "{}"` '
+
+
+
+
+=head1 Acknowledgements
+
+/$SEARCH/s  を /^$SEARCH\z/s に着替えるとfind互換の指定方法に。
+
+Based on code from Find.pm and I made inspired by find2perl.
+
+etc 1) in .bashrc/.zshrc
+
+  if you like it;
+
+    alias     finz='finz'
+    alias    finds='finz'
+    alias     pind='finz'
+    alias perlfind='finz'
+
+etc 2) Web
+
+    https://github.com/hitobashira/Friends
+
+
+=head1 Tommorrow
+
+C<finz>
+So had to be used with care.
+I no hope I've fixed that ( because this in difficult for me).
+I can not make out english. Not fully understand english. only japanese.
+
+=cut
+
+
+sub TrashCan {
+      #      if ( defined $SEARCH ) { $SEARCH =~ s/(\A|[^.])\Q*\E{1,}/$1.*/g ;}#やめとく
+                  #$SEARCH =~ s#([./^\$()+])#\\$1#g;
+                  #$SEARCH =~ s#\*#.*#g;
+                  #   $SEARCH =~ s#(?!\.)\?#.#g;
+
+                  $SEARCH =~ s#(\?|\*)\.(\D|\d)#$1\\.$2#g;
+                  $SEARCH =~ s/(\A|[^.])   \Q*\E   /$1.*/x ;
+                  say "検索変換 $SEARCH" ;
+
+      say "EXCLUDE $EXCLUDE" ;
+      # $EXCLUDE =~ s#([./^\$()+])#\\$1#g;
+      $EXCLUDE =~ s#\*#.*#g;   # 必要なのか。
+      #$EXCLUDE =~ s#\?#.#g;
+      say "EXCLUDE $EXCLUDE ato" ;
+
+# sub fileglob_change {
+#     @FINZ =~ s#([./^\$()+])#\\$1#g;
+#     @FINZ =~ s#\*#.*#g;
+# #    $x =~ s#\?#.#g;
+# #    "^@FINZ\\z";
+# }
+# sub fileglob_to_re ($) {
+#     my $x = shift;
+#     $x =~ s#([./^\$()+])#\\$1#g;
+#     $x =~ s#\*#.*#g;
+#     $x =~ s#\?#.#g;
+#     "^$x\\z";
+# }
+
+
+
+      # say "---\@FINZ @FINZ globe ";
+      # say "---\@ARGV @ARGV";
+
+              # say $SEARCH;
+              # say "BAR $BAROPT";
+              # say "$EXCLUDE $INCLUDE";
+              # say "$SENSITIVE :sensitive normal";
+              # say "$INSENSITIVE :insensitive + a";
+
+        # say 0  if ( $#ARGV eq -1 ); # 引数なし fiz
+        # say "---\$\#ARGV 1"  if ( $#ARGV eq 0 ); # 引数1はある fiz re
+        # say "---\$\#ARGV 2"  if ( $#ARGV eq 1 ); # 引数2はある。fiz re -print|-E
+        # say "---\$\#ARGV 3"  if ( $#ARGV eq 2 ); # 引数3はある。fiz re -print|-E arg
+        # say "---\$\#ARGV 4"  if ( $#ARGV eq 3 ); # 引数4はある。fiz re -print|-E arg -ignore
+        # say "---\$\#ARGV 5"  if ( $#ARGV eq 4 ); # 引数5はある。fiz re -print|-E arg -ignore
+        # say "---\$\#ARGV 6"  if ( $#ARGV eq 5 ); # 引数6はある。fiz re -print|-E arg -ignore
+
+        # say "---\$BAROPT $BAROPT";
+
+
+    # say "No argument : error " and exit if ( $#ARGV < 0 );#if (@FINZ != 0 ){
+                # $File::Find::dir  is the current directory name,
+                # $File::Find::name is the complete pathname to the file.
+                # $_                is the current filename within that directory
+                # Don't modify these variables.
+
+
+sub prune_____ {
+    my ($dev,$ino,$mode,$nlink,$uid,$gid);
+# 特定ディレクトリ(lib)を除外したファイルの一覧を取得
+    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&
+    -d _ &&
+    /^lib\z/s   &&    ($File::Find::prune = 1)
+    ||
+    -f _ &&
+    print("$name\n");
+}
+sub prune_sample {
+    my ($dev,$ino,$mode,$nlink,$uid,$gid);
+# 特定ディレクトリ(lib)を除外したファイルの一覧を取得
+    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -d _ &&
+    /^lib\z/s   &&    ($File::Find::prune = 1)
+    ||
+    -f _ &&
+    print("$name\n");
+}
+sub prune_single {
+    my ($dev,$ino,$mode,$nlink,$uid,$gid);
+# 特定のデ ィレクトリ(lib)を除外して、ファイル名が"*.php"のものの一覧を取得
+    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -d _ &&
+    /^lib\z/s   &&   ($File::Find::prune = 1)
+    ||
+    -f _ &&
+    /^.*\.php\z/s &&
+    print("$name\n");
+}
+sub prune_dual {
+    my ($dev,$ino,$mode,$nlink,$uid,$gid);
+#find2perl find . -type d -name XXX -prune -o -name YYY -prune -o -type f -name '*.m' -print
+    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) && -d _ &&
+              /^XXX\z/s   &&  ($File::Find::prune = 1)
+    ||
+              /^YYY\z/s   &&  ($File::Find::prune = 1)
+    ||
+      -f _ &&
+            /^.*\.m\z/s &&
+    print("$name\n");
+}
+sub prune_multi {
+    my ($dev,$ino,$mode,$nlink,$uid,$gid);
+
+    (($dev,$ino,$mode,$nlink,$uid,$gid) = lstat($_)) &&
+    -d _ &&
+    /^XXX\z/s &&
+    ($File::Find::prune = 1)
+    ||
+    /^YYY\z/s &&
+    ($File::Find::prune = 1)
+    ||
+    /^ZZZ\z/s &&
+    ($File::Find::prune = 1)
+    ||
+    /^000\z/s &&
+    ($File::Find::prune = 1)
+    ||
+    -f _ &&
+    /^.*\.m.*\z/s &&
+    print("$name\n");
+}
+
+
+  #
+  # my $filename = $0;
+  # my ($basename, $dirname, $ext) = fileparse($filename, qr/\.[^\.]*$/);
+  # say   "${basename}";
+  # if ( "fiz" eq $basename ){
+  #     say "match fiz: case sensitive" ;
+  #   }
+  # elsif ( "Fiz" eq $basename ){  say "match Fiz : case insensitive" ;
+  #   }
+
+      # $SEARCH   = shift @FINZ; # Search :: 検索Perl RE 引数[0]=1番目のパラメータ
+      # $BAROPT    = shift @FINZ; # 2nd_ARG
+      # $EXCLUDE   = shift @FINZ; # 3rd_ARG Perl RE eq INCLUDE
+      # $INCLUDE   = $EXCLUDE;
+      # $INSENSITIVE  ="m{" . "$SEARCH" . "}isa";#say $SENSITIVE ;
+      # $SENSITIVE    ="m{" . "$SEARCH" . "}s";#say $INSENSITIVE ;
+      #Defined-or
+             # if ( ! defined $ARGV[1] ){ $BAROPT='-print2';    }#ARGV[1]が空なら代入。おためごかし規定値。
+
+__DATA__
+
+=pod
+# map{print "$_: $opt{$_}\n"} keys %opt;
+
+if ( exists $opts{i} ){
+    # print "option i が指定されました。\n";
+}
+
+if ( exists $opts{e} ) {
+    # print "option e が指定されました。\n";
+    if (defined $opts{n}) {
+        # printf "値は %s です。", $opts{n};
+    }
+    # say "exclude";
+}
+
+if ( exists $opts{n} ) {
+    # print "option n が指定されました。";
+    if (defined $opts{n}) {
+        # printf "値は %s です。", $opts{n};
+        #$PRINTER_TYPE=$opts{n}%s;
+    }
+    # say "null";
+}
+else{
+ # say "";
+}
+=cut
