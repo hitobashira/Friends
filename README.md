@@ -1,5 +1,7 @@
 # Friends :: Easy Find Tool with Perl Regular Expressions.
 
+# This program is Discon. Newly rewritten version will be replaced soon.
+
 Friends v.x.x.x-2017-03-24 with Perl RE ::
 
 not alternative find , easy to find files with perl regular expression.
